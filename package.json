@@ -8,6 +8,7 @@
     "tsc": "tsc",
     "postinstall": "npm run tsc",
     "start": "node .",
+    "start:dev":"npm run tsc && npm run start",
     "watch": "nodemon main",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
