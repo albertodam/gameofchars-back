@@ -1,7 +1,7 @@
 /* tslint:disable */
 export default class Logger {
 
-    static log(message: string): void {
+    static log(message: any): void {
         if(process.env.DEBUG){
             console.log('Debug: ' + message);
         }else{
@@ -9,9 +9,10 @@ export default class Logger {
         }
     }
 
-    static  error(message: string): void{
+    static error(message: any): void{
         if(process.env.DEBUG){
             console.log('DebugError: ' + message);
+            console.log(message);
         }else{
             console.log('ProdError: ', message);
         }

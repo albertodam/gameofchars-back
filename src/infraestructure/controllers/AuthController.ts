@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import axios from 'axios';
 import express, { Request, Response } from 'express';
 import Logger from '../../logger';
@@ -28,16 +29,15 @@ export class AuthController implements Controller {
             client_secret: process.env.CLIENT_SECRET,
             code: request.body.code
         }
-        axios.post('https://github.com/login/oauth/access_token', data, { headers: {Accept :'application/json'} })
+        axios.post('https://github.com/login/oauth/access_token', data, { headers: { Accept: 'application/json' } })
             .then(async (res) => {
                 if (res.data.error) {
                     throw new Error('Error de verificación del código: ' + res.data.error_description);
                 }
-                Logger.log(res.data.access_token);
                 const userInfo = await this.getInfoUser(res.data.access_token);
-                console.log(userInfo.data);
-                response.send('github login correcto');
-                console.log('Fin de la request');
+                const { avatar_url, login, id } = userInfo.data;
+                const token = jwt.sign({ id, login, provider: 'github' }, process.env.SECRET_JWT, {});
+                response.send({ avatar_url, login, id, token });
             })
             .catch((error) => {
                 Logger.error(error);
@@ -46,9 +46,7 @@ export class AuthController implements Controller {
     }
 
     private async getInfoUser(token: string) {
-        Logger.log('Ande andas!')
-        return await axios.get('https://api.github.com/user', {headers: {'Authorization':`token ${token}`}});
-
+        return await axios.get('https://api.github.com/user', { headers: { 'Authorization': `token ${token}` } });
     }
 
 }
