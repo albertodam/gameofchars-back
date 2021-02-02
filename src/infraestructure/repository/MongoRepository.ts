@@ -23,7 +23,7 @@ export class MongoRepository {
 
     async getScore(limit = 5): Promise<ScoreBoard[]> {
         return new Promise((resolve, reject) => {
-            MongoScoreBoard.find({}).select({ "name": 1, "_id": 0, "score":1}).sort({score: 'desc'}).exec((err, docs) => {
+            MongoScoreBoard.find({externalId: {$ne:'anonymous-5854397'}}).select({ "name": 1, "_id": 0, "score":1}).sort({score: 'desc'}).exec((err, docs) => {
                 if (err) {
                     reject(err);
                     return;

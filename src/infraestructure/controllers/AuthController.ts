@@ -20,8 +20,15 @@ export class AuthController implements Controller {
     private initializeRoutes() {
         this.router.get(this.path + '/github', this.githubredirect.bind(this));
         this.router.post(this.path + '/github', this.github.bind(this));
+        this.router.post(this.path + '/anonymous', this.anonymous.bind(this));
     }
 
+
+    private anonymous(request: Request, response: Response) {
+        const token = jwt.sign({ login: 'Anonymous Users', id: 'anonymous-5854397', provider: 'anonymous' }, process.env.SECRET_JWT, {});
+        response.send({ avatar_url: 'https://avatars.dicebear.com/4.5/api/male/anonymous.svg', login: 'Anonymous Users', id: 'anonymous-5854397', token });
+        return;
+    }
 
     private githubredirect(request: Request, response: Response) {
         response.redirect('https://gameofchars.netlify.app/#/github?code=' + request.query.code);
