@@ -18,9 +18,15 @@ export class AuthController implements Controller {
     }
 
     private initializeRoutes() {
+        this.router.get(this.path + '/github', this.githubredirect.bind(this));
         this.router.post(this.path + '/github', this.github.bind(this));
     }
 
+
+    private githubredirect(request: Request, response: Response) {
+        response.redirect('https://gameofchars.netlify.app/#/github?code=' + request.query.code);
+        return;
+    }
 
     private github(request: Request, response: Response) {
 
