@@ -47,8 +47,8 @@ export default class App {
 
             socket.on('disconnecting', () => {
                 socket.rooms.forEach((room) => {
-                    console.log(room);
-                    games[room] -= 1;
+                    if (!games[room]) return;
+                    games[room].nUsers -= 1;
                     socket.to(room).emit('userLeave', { game: games[room] });
                 })
                 // the Set contains at least the socket ID
@@ -56,17 +56,43 @@ export default class App {
 
             socket.on('createGame', (gameId) => {
                 socket.join(gameId);
-                games[gameId] = 1;
+                games[gameId] = {
+                    nUsers: 1,
+                    creatorId: socket.client.conn.id
+                };
                 // socket.to(gameId).emit('userJoinned', { game: games[gameId] });
             });
 
             socket.on('joinGame', (gameId) => {
                 socket.join(gameId);
-                games[gameId] += 1;
-                socket.to(gameId).emit('userJoinned', { game: games[gameId] });
+                if (!games[gameId]) return;
+                games[gameId].nUsers += 1;
+                // setTimeout(() => {
+                this.io.in(gameId).emit('userJoinned', { game: games[gameId] });
+                //}, 1000);
+
             });
 
+            socket.on('startingGame', gameId => {
+                const emitterId = socket.client.conn.id;
+                const game = games[gameId];
+                if (!game) return;
+                if (emitterId === game.creatorId) {
+                    this.io.in(gameId).emit('startGame', { game: games[gameId] });
+                } else {
+                    console.log("Algun pintamonas quiere empezar una partida sin ser el creador");
+                }
+            })
+
             socket.on('sendGameStatus', (gameStatus) => {
+                const emitterId = socket.client.conn.id;
+                const game = games[gameStatus.gameId];
+                if (!game) return;
+                if (emitterId === game.creatorId) {
+                    console.log("El creador ha hablado");
+                } else {
+                    console.log("Algun pintamonas quiere hablar");
+                }
                 console.log("Un usuario manda mensaje a una sala: ", gameStatus.gameId);
                 this.io.to(gameStatus.gameId).emit('Emito solo a mi sala');
             });
