@@ -34,13 +34,20 @@ export default class App {
     }
 
     public listen() {
-        this.app.listen(this.port, () => {
-           // tslint:disable-next-line: no-console
+        this.server.listen(this.port, () => {
+            // tslint:disable-next-line: no-console
             console.log(`Game of chars running on localhost:${this.port}...`);
         });
 
         this.io.on("connect", (socket: Socket) => {
             console.log('Conexión de un cliente');
+
+            socket.on('createGame', (data) => {
+                console.log(data);
+                socket.join(data);
+                //socket.broadcast.emit('respuesta', 'hola angular, soy tu servidor');
+            });
+
         });
     }
 
