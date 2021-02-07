@@ -31,7 +31,7 @@ export class AuthController implements Controller {
     }
 
     private githubredirect(request: Request, response: Response) {
-        response.redirect('https://gameofchars.netlify.app/#/github?code=' + request.query.code);
+        response.redirect(process.env.URL_FRONT+'/#/github?code=' + request.query.code);
         return;
     }
 
