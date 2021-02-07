@@ -34,6 +34,9 @@ export default class App {
     }
 
     public listen() {
+
+        const games: any = {};
+
         this.server.listen(this.port, () => {
             // tslint:disable-next-line: no-console
             console.log(`Game of chars running on localhost:${this.port}...`);
@@ -42,10 +45,30 @@ export default class App {
         this.io.on("connect", (socket: Socket) => {
             console.log('Conexión de un cliente');
 
-            socket.on('createGame', (data) => {
-                console.log(data);
-                socket.join(data);
-                //socket.broadcast.emit('respuesta', 'hola angular, soy tu servidor');
+            socket.on('disconnecting', () => {
+                socket.rooms.forEach((room) => {
+                    console.log(room);
+                    games[room] -= 1;
+                    socket.to(room).emit('userLeave', { game: games[room] });
+                })
+                // the Set contains at least the socket ID
+            });
+
+            socket.on('createGame', (gameId) => {
+                socket.join(gameId);
+                games[gameId] = 1;
+                // socket.to(gameId).emit('userJoinned', { game: games[gameId] });
+            });
+
+            socket.on('joinGame', (gameId) => {
+                socket.join(gameId);
+                games[gameId] += 1;
+                socket.to(gameId).emit('userJoinned', { game: games[gameId] });
+            });
+
+            socket.on('sendGameStatus', (gameStatus) => {
+                console.log("Un usuario manda mensaje a una sala: ", gameStatus.gameId);
+                this.io.to(gameStatus.gameId).emit('Emito solo a mi sala');
             });
 
         });
