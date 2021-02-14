@@ -48,29 +48,37 @@ export default class App {
             socket.on('disconnecting', () => {
                 socket.rooms.forEach((room) => {
                     if (!games[room]) return;
-                    games[room].nUsers -= 1;
-                    socket.to(room).emit('userLeave', { game: games[room] });
+                    games[room].players.filter((player: any) => {
+                        return player.id !== socket.client.conn.id
+                    });
+                    console.log('Alguien a abandonado la sala');
+                    socket.to(room).emit('userLeave', games[room]);
                 })
                 // the Set contains at least the socket ID
             });
 
-            socket.on('createGame', (gameId) => {
+            socket.on('createGame', (gameInfo) => {
+
+                if (!gameInfo) return;
+                const { gameId, username } = gameInfo;
                 socket.join(gameId);
+
                 games[gameId] = {
-                    nUsers: 1,
+                    id: gameId,
+                    players: [{ username, creator: true, id: socket.client.conn.id, score: 0 }],
                     creatorId: socket.client.conn.id
                 };
-                // socket.to(gameId).emit('userJoinned', { game: games[gameId] });
+                this.io.in(gameId).emit('userJoinned', games[gameId]);
             });
 
-            socket.on('joinGame', (gameId) => {
-                socket.join(gameId);
+            socket.on('joinGame', (gameInfo) => {
+                if (!gameInfo) return;
+                const { gameId, username } = gameInfo;
                 if (!games[gameId]) return;
-                games[gameId].nUsers += 1;
-                // setTimeout(() => {
-                this.io.in(gameId).emit('userJoinned', { game: games[gameId] });
-                //}, 1000);
 
+                socket.join(gameId);
+                games[gameId].players.push({ username, id: socket.client.conn.id, score: 0 });
+                this.io.in(gameId).emit('userJoinned', games[gameId]);
             });
 
             socket.on('startingGame', gameId => {
@@ -78,10 +86,24 @@ export default class App {
                 const game = games[gameId];
                 if (!game) return;
                 if (emitterId === game.creatorId) {
-                    this.io.in(gameId).emit('startGame', { game: games[gameId] });
+                    this.io.in(gameId).emit('startGame', games[gameId]);
                 } else {
                     console.log("Algun pintamonas quiere empezar una partida sin ser el creador");
                 }
+            })
+
+
+            socket.on('finishPlayerRound', (playerRoundFinishData) => {
+                const game = games[playerRoundFinishData.gameId];
+                console.log(playerRoundFinishData.score);
+                const emitterId = socket.client.conn.id;
+                game.players = game.players.map((player: any) => {
+                    if (player.id === emitterId) {
+                        player.score += playerRoundFinishData.score;
+                    }
+                    return player;
+                });
+                this.io.in(game.id).emit('playerFinishedRound', game);
             })
 
             socket.on('sendGameStatus', (gameStatus) => {
