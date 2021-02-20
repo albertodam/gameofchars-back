@@ -53,8 +53,7 @@ export default class App {
                     });
                     console.log('Alguien a abandonado la sala');
                     socket.to(room).emit('userLeave', games[room]);
-                })
-                // the Set contains at least the socket ID
+                });
             });
 
             socket.on('createGame', (gameInfo) => {
@@ -62,11 +61,13 @@ export default class App {
                 if (!gameInfo) return;
                 const { gameId, username } = gameInfo;
                 socket.join(gameId);
-
+                console.log(socket.id);
                 games[gameId] = {
                     id: gameId,
+                    playersFinished: [],
                     players: [{ username, creator: true, id: socket.client.conn.id, score: 0 }],
-                    creatorId: socket.client.conn.id
+                    creatorId: socket.client.conn.id,
+                    creatorSocketId: socket.id
                 };
                 this.io.in(gameId).emit('userJoinned', games[gameId]);
             });
@@ -95,7 +96,6 @@ export default class App {
 
             socket.on('finishPlayerRound', (playerRoundFinishData) => {
                 const game = games[playerRoundFinishData.gameId];
-                console.log(playerRoundFinishData.score);
                 const emitterId = socket.client.conn.id;
                 game.players = game.players.map((player: any) => {
                     if (player.id === emitterId) {
@@ -106,17 +106,29 @@ export default class App {
                 this.io.in(game.id).emit('playerFinishedRound', game);
             })
 
-            socket.on('sendGameStatus', (gameStatus) => {
+
+            socket.on('notifyAllUserFinishGame', gameId => {
                 const emitterId = socket.client.conn.id;
-                const game = games[gameStatus.gameId];
+                const game = games[gameId];
                 if (!game) return;
                 if (emitterId === game.creatorId) {
-                    console.log("El creador ha hablado");
+                    this.io.in(gameId).emit('finishGameAllPlayer', game);
+
                 } else {
-                    console.log("Algun pintamonas quiere hablar");
+                    console.log("Algun pintamonas quiere terminar una partida sin ser el creador");
                 }
-                console.log("Un usuario manda mensaje a una sala: ", gameStatus.gameId);
-                this.io.to(gameStatus.gameId).emit('Emito solo a mi sala');
+            })
+
+            socket.on('playerFinishGame', (gameId) => {
+                const emitterId = socket.client.conn.id;
+                const game = games[gameId];
+                if (!game) return;
+
+                game.playersFinished.push(emitterId);
+
+                if (game.playersFinished.length === game.players.length) {
+                    this.io.to(game.creatorSocketId).emit('finishGame', true);
+                }
             });
 
         });
