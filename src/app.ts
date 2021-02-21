@@ -43,13 +43,12 @@ export default class App {
         });
 
         this.io.on("connect", (socket: Socket) => {
-            console.log('Conexión de un cliente');
-
+            
             socket.on('disconnecting', () => {
                 socket.rooms.forEach((room) => {
                     if (!games[room]) return;
                     games[room].players.filter((player: any) => {
-                        return player.id !== socket.client.conn.id
+                        return player.id !== socket.id
                     });
                     console.log('Alguien a abandonado la sala');
                     socket.to(room).emit('userLeave', games[room]);
@@ -59,14 +58,13 @@ export default class App {
             socket.on('createGame', (gameInfo) => {
 
                 if (!gameInfo) return;
-                const { gameId, username } = gameInfo;
+                const { gameId, username, avatar } = gameInfo;
                 socket.join(gameId);
-                console.log(socket.id);
                 games[gameId] = {
                     id: gameId,
                     playersFinished: [],
-                    players: [{ username, creator: true, id: socket.client.conn.id, score: 0 }],
-                    creatorId: socket.client.conn.id,
+                    players: [{ username, avatar, creator: true, id: socket.id, score: 0 }],
+                    creatorId: socket.id,
                     creatorSocketId: socket.id
                 };
                 this.io.in(gameId).emit('userJoinned', games[gameId]);
@@ -74,16 +72,16 @@ export default class App {
 
             socket.on('joinGame', (gameInfo) => {
                 if (!gameInfo) return;
-                const { gameId, username } = gameInfo;
+                const { gameId, username, avatar } = gameInfo;
                 if (!games[gameId]) return;
 
                 socket.join(gameId);
-                games[gameId].players.push({ username, id: socket.client.conn.id, score: 0 });
+                games[gameId].players.push({ username, avatar, id: socket.id, score: 0 });
                 this.io.in(gameId).emit('userJoinned', games[gameId]);
             });
 
             socket.on('startingGame', gameId => {
-                const emitterId = socket.client.conn.id;
+                const emitterId = socket.id;
                 const game = games[gameId];
                 if (!game) return;
                 if (emitterId === game.creatorId) {
@@ -96,7 +94,7 @@ export default class App {
 
             socket.on('finishPlayerRound', (playerRoundFinishData) => {
                 const game = games[playerRoundFinishData.gameId];
-                const emitterId = socket.client.conn.id;
+                const emitterId = socket.id;
                 game.players = game.players.map((player: any) => {
                     if (player.id === emitterId) {
                         player.score += playerRoundFinishData.score;
@@ -108,19 +106,19 @@ export default class App {
 
 
             socket.on('notifyAllUserFinishGame', gameId => {
-                const emitterId = socket.client.conn.id;
+                const emitterId = socket.id;
                 const game = games[gameId];
                 if (!game) return;
                 if (emitterId === game.creatorId) {
                     this.io.in(gameId).emit('finishGameAllPlayer', game);
-
+                    delete games[gameId];
                 } else {
                     console.log("Algun pintamonas quiere terminar una partida sin ser el creador");
                 }
             })
 
             socket.on('playerFinishGame', (gameId) => {
-                const emitterId = socket.client.conn.id;
+                const emitterId = socket.id;
                 const game = games[gameId];
                 if (!game) return;
 
@@ -130,6 +128,22 @@ export default class App {
                     this.io.to(game.creatorSocketId).emit('finishGame', true);
                 }
             });
+
+            socket.on('sendTrap', gameId => {
+                const emitterId = socket.id;
+
+                const game = games[gameId];
+                if (!game) return;
+
+
+                const otherPlayers = game.players
+                    .filter((player: any) => player.id !== socket.id);
+
+                const randomPlayerIndex = Math.floor(Math.random() * otherPlayers.length);
+                const randomPlayer = otherPlayers[randomPlayerIndex];        
+                this.io.to(randomPlayer.id).emit('sendTrapToPlayer', true);
+
+            })
 
         });
     }
